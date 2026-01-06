@@ -11,7 +11,7 @@
   - Leakage-free feature engineering
   - Quantitative evaluation of **CNN-based time-series embeddings**
 - **Final Public Leaderboard Score**:
-  - Single model: **0.42255**
+  - Single model: **0.42250**
   - **Ensemble model: 0.41455**
 - **Rank**: **96 / 793** (Top ~12%)
 
