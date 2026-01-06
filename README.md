@@ -1,4 +1,4 @@
-📘 Japanese version → README_ja.md
+📘 Japanese version → README_japanese.md
 
 # Store Sales Time Series Forecasting
 
