@@ -11,8 +11,8 @@
   - Leakage-free feature engineering
   - Quantitative evaluation of **CNN-based time-series embeddings**
 - **Final Public Leaderboard Score**:
-  - Single model: **0.42405**
-  - **Ensemble model: 0.41542**
+  - Single model: **0.42255**
+  - **Ensemble model: 0.41455**
 - **Rank**: **96 / 793** (Top ~12%)
 
 This project emphasizes not only predictive accuracy, but also  
@@ -42,9 +42,9 @@ the solution is designed with **real-world data science practices** in mind.
 
 ## Results
 
-- **Final single model (Public LB)**: 0.42405  
-- **Final ensemble model (Public LB)**: **0.41542**  
-- **Rank**: 96 / 793 (Top ~12%)
+- **Final single model (Public LB)**: 0.42250  
+- **Final ensemble model (Public LB)**: **0.41455**  
+- **Rank**: 96 / 813 (Top ~12%)
 
 The ensemble consistently outperformed the single model, and  
 cross-validation scores showed strong alignment with Public Leaderboard results.
