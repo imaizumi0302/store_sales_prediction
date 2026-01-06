@@ -4,51 +4,50 @@
 
 ## Project Summary
 
-**Task**
-Forecast daily sales for each *store × product family* for the next **16 days**.
+- **Task**: Forecast daily sales for each *store × product family* for the next 16 days  
+- **Approach**: Time series regression using **LightGBM**  
+- **Key Contributions**:
+  - Carefully designed **time-series cross-validation**
+  - Leakage-free feature engineering
+  - Quantitative evaluation of **CNN-based time-series embeddings**
+- **Final Public Leaderboard Score**:
+  - Single model: **0.42405**
+  - **Ensemble model: 0.41542**
+- **Rank**: **96 / 793** (Top ~12%)
 
-**Approach**
-Time-series regression models primarily based on **gradient boosting (LightGBM)**.
-
-**Key Contributions**
-
-* Carefully designed **time-series cross-validation**
-* Leakage-aware **feature engineering**
-* Experimental evaluation of **CNN-based time-series embeddings**
-
-**Final Results (Public Leaderboard)**
-
-* Single model: **0.42405**
-* Ensemble model: **0.41542**
-* Rank: **96 / 793** (Top ~12%)
-
-This project emphasizes not only predictive performance, but also **reproducibility, validity, and decision-making processes** in modeling.
+This project emphasizes not only predictive accuracy, but also  
+**reproducibility, validation integrity, and principled model selection**.
 
 ---
 
 ## Overview
 
-This repository contains a solution for the Kaggle competition
+This repository contains a complete solution for the Kaggle competition  
 **Store Sales – Time Series Forecasting**.
 
-The objective is to predict daily sales for each *store × product family* using historical sales records and auxiliary external data.
+The goal is to predict daily sales for each *store × product family*  
+using historical sales data and auxiliary external information such as  
+oil prices and holiday calendars.
 
-Rather than relying on leaderboard-specific tricks, this project focuses on:
+The project focuses on:
 
-* Time-series–aware cross-validation
-* Leakage-safe feature engineering
-* Quantitative and reproducible model selection
+- Time-aware validation strategies
+- Strict prevention of data leakage
+- Model and feature selection based on quantitative evidence
+
+Rather than relying on leaderboard-specific tricks,  
+the solution is designed with **real-world data science practices** in mind.
 
 ---
 
 ## Results
 
-* Final single model (Public LB): **0.42405**
-* Ensemble model (Public LB): **0.41542**
-* Rank: **96 / 793** (Top ~12%)
+- **Final single model (Public LB)**: 0.42405  
+- **Final ensemble model (Public LB)**: **0.41542**  
+- **Rank**: 96 / 793 (Top ~12%)
 
-The ensemble model consistently outperformed the single model.
-Moreover, the cross-validation scores showed good alignment with Public Leaderboard performance, indicating a reliable validation strategy.
+The ensemble consistently outperformed the single model, and  
+cross-validation scores showed strong alignment with Public Leaderboard results.
 
 ---
 
@@ -56,77 +55,73 @@ Moreover, the cross-validation scores showed good alignment with Public Leaderbo
 
 The following datasets provided by Kaggle were used:
 
-* `train.csv` / `test.csv`
-  Daily sales for each *store × product family*
-* `stores.csv`
-  Store metadata (city, state, store type, cluster)
-* `oil.csv`
-  Daily oil prices (missing dates were imputed)
-* `holidays_events.csv`
-  Holiday information (national, regional, local)
+- `train.csv` / `test.csv`: Daily sales by store and product family  
+- `stores.csv`: Store metadata (city, state, type, cluster)  
+- `oil.csv`: Daily oil prices (missing values imputed)  
+- `holidays_events.csv`: National, regional, and local holidays  
 
-To ensure consistency in feature generation:
-
-* `train` and `test` were concatenated during preprocessing
-* Any sales-dependent features were computed **using past data only**
+For consistent preprocessing, training and test data were concatenated.  
+Any features derived from sales values were computed **strictly using past data only**.
 
 ---
 
-## Validation Strategy
+## Validation Strategy (Key Improvement)
 
-The most significant performance improvement in this project came from redesigning the **cross-validation (CV) strategy**.
+The most significant performance improvement came from  
+**revising the cross-validation (CV) design**.
 
 ### Initial Design (Before Improvement)
 
-Initially, rolling and aggregated features (e.g., by store or product family) were computed as follows:
+Originally, rolling and mean-based features were computed as follows:
 
-* Use only the period before the *earliest train_end* across all folds
-* Apply the same features to the validation period of every fold
+- Statistics were calculated using data **prior to the earliest `train_end`** among all folds
+- The same feature values were reused across all validation folds
 
-This approach was safe in terms of leakage prevention, but had a major drawback:
+While this approach avoided leakage, it suffered from a major drawback:
 
-* It did **not fully utilize all available historical data** within each fold
-
----
-
-### Improved Design (Final Approach)
-
-To address this limitation, feature generation was moved **inside the CV loop**.
-
-For each fold:
-
-* All data up to the fold-specific `train_end` was used
-* Rolling and aggregated features were recomputed per fold
-* Validation periods used features generated exclusively for that fold
-
-This allowed:
-
-* Maximum use of available historical data per fold
-* Leakage prevention with richer feature representations
+- Each fold failed to fully utilize all available historical data  
+  within its own training period
 
 ---
 
-### Effect
+### Revised Design (Final Approach)
 
-As a result:
+To address this issue, feature generation was moved **inside the CV loop**:
 
-* Cross-validation scores improved significantly
-* Alignment between CV and Public LB scores improved
-* Overall model performance became more stable and reliable
+- For each fold:
+  - All data up to that fold’s `train_end` was used
+  - Mean-based and rolling features were recomputed
+- Validation data used fold-specific features only
 
-This experience reinforced the importance of **data splitting and information availability timing** in time-series tasks—often more critical than model choice itself.
+This design:
+
+- Maximized the use of available historical data
+- Preserved strict leakage prevention
+- Produced more informative features per fold
 
 ---
 
-## Cross-Validation Splits
+### Impact
 
-| Fold | Training Period         | Validation Period       |
-| ---- | ----------------------- | ----------------------- |
-| 1    | 2013-01-01 → 2017-06-30 | 2017-07-01 → 2017-07-16 |
-| 2    | 2013-01-01 → 2017-07-15 | 2017-07-17 → 2017-08-01 |
-| 3    | 2013-01-01 → 2017-07-30 | 2017-07-31 → 2017-08-15 |
+- Significant improvement in cross-validation scores
+- Better alignment between CV results and Public Leaderboard scores
 
-For all folds, any feature depending on sales values used **only data prior to `train_end`** to avoid leakage.
+This highlighted an important lesson:
+
+> **In time-series tasks, validation design can have a larger impact than model choice itself.**
+
+---
+
+## Time-Series Cross-Validation Setup
+
+| Fold | Training Period | Validation Period |
+|---|---|---|
+| 1 | 2013-01-01 → 2017-06-30 | 2017-07-01 → 2017-07-16 |
+| 2 | 2013-01-01 → 2017-07-15 | 2017-07-17 → 2017-08-01 |
+| 3 | 2013-01-01 → 2017-07-30 | 2017-07-31 → 2017-08-15 |
+
+For all folds, sales-dependent features were computed using  
+data **up to `train_end` only**.
 
 ---
 
@@ -134,100 +129,105 @@ For all folds, any feature depending on sales values used **only data prior to `
 
 ### Fold-Independent Features
 
-* **Date features**: year, month, day, weekday, weekend flag
-* **Oil price features**: rolling means (30 / 90 / 180 days)
-* **Holiday features**:
-
-  * National / regional / local holiday flags
-  * Unified holiday flag
-  * Special workday flag
-
----
+- Date features: year, month, day, weekday, weekend flag  
+- Oil price features: rolling averages (30 / 90 / 180 days)  
+- Holiday features:
+  - National / regional / local holiday flags
+  - Aggregated holiday indicator
+  - Special workday flag
 
 ### Fold-Dependent (Leakage-Safe) Features
 
-**Aggregated features (target encoding style)**:
-
-* `store`
-* `family`
-* `store × family`
-* `store type`
-* `cluster`
-
-**Rolling statistics**:
-
-* Windows: 3 / 7 / 30 days
-* Shifted to ensure only past values are referenced
+- Mean-based (target encoding) features:
+  - store, family, store × family, type, cluster
+- Rolling sales statistics:
+  - Windows: 3 / 7 / 30 days
+  - Implemented with shifts to ensure past-only references
 
 ---
 
 ## Model
 
-* **Base model**: LightGBM
-* **Objective**: Regression (evaluated using RMSLE in log space)
-* Selected for robustness to large-scale, high-dimensional features
-* Hyperparameters optimized using Optuna
+### Base Model: LightGBM
+
+- Objective: regression (RMSLE evaluated in log space)
+- Gradient boosting model chosen for robustness with large feature sets
+- Hyperparameters optimized using Optuna
+
+### Hyperparameter Optimization
+
+- Optuna with Median Pruner
+- 3-fold time-series cross-validation
+- Strategy:
+  1. Full hyperparameter search without CNN features
+  2. Use the resulting best parameters as initialization
+  3. Perform lightweight tuning when CNN embeddings are included
 
 ---
 
-## Hyperparameter Tuning
+## SHAP Analysis and Feature Reduction
 
-* **Framework**: Optuna with Median Pruner
-* **Validation**: 3-fold time-series CV
+SHAP was used to analyze feature contributions to model predictions.
 
-### Strategy
+Key findings:
 
-* Full tuning without CNN features
-* Best parameters reused as initialization
-* Lightweight tuning when CNN embeddings were enabled
+- Oil-related features showed **relatively high split importance**
+- However, their **mean absolute SHAP values were extremely small**
+
+This indicates that while oil features were frequently used for splits,
+they did **not consistently move predictions in a single direction**.
+
+### Feature Ablation Results
+
+| Model Variant | CV Mean RMSLE | CV Std |
+|---|---:|---:|
+| All features | 0.40420 | 0.02295 |
+| Without holiday features | 0.40091 | 0.02256 |
+| **Without oil features** | **0.39794** | **0.01680** |
+| Without oil & holiday features | 0.40012 | 0.01759 |
+
+Removing oil-related features:
+
+- Improved average CV performance
+- Significantly reduced variance across folds
+
+This suggests that oil features added noise rather than stable signal,
+and their removal improved both **generalization and stability**.
 
 ---
 
 ## CNN-Based Time-Series Embedding (Experimental)
 
-To capture short-term temporal patterns not fully represented by rolling statistics, a **1D CNN-based time-series embedding** was implemented.
+To capture short-term temporal patterns beyond rolling statistics,
+a 1D CNN-based embedding was explored.
 
-**Input (past 30 days)**:
+- Input: past 30 days of features
+  - promotion flags
+  - holiday flags
+  - weekday / date features
+  - oil prices
+- Output: fixed-dimensional embedding vector
+- CNN used as a **feature extractor only (no training)**
 
-* Promotion flags
-* Holiday flags
-* Day-of-week / date features
-* Oil price
+To reduce computation cost, embeddings were cached per fold during Optuna runs.
 
-**Output**:
+### Evaluation
 
-* Fixed-dimensional embedding vector
+- Training scores improved
+- Validation scores did **not** show consistent gains
 
-The CNN was used **only as a feature extractor** and not trained jointly with the model.
-
-To reduce computational cost:
-
-* Embeddings were cached per fold
-* No recomputation occurred during Optuna optimization
-
----
-
-## Evaluation and Decision
-
-* CNN embeddings appeared in feature importance and were utilized by the model
-* Training scores improved, but validation scores did not improve consistently
-
-Based on quantitative evaluation:
-
-* CNN features were excluded from the final model
-* Priority was given to **reproducibility, simplicity, and inference cost**
+Based on quantitative evaluation, CNN embeddings were excluded from the final model
+in favor of **simplicity, reproducibility, and inference efficiency**.
 
 ---
 
 ## Final Training and Prediction
 
-* Final model trained using all data up to **2017-08-15**
-* Forecast period: **2017-08-16 → 2017-08-31**
-
-**Submitted models**:
-
-* Single final model
-* Ensemble of CV fold models + final model
+- Final model trained on all data up to **2017-08-15**
+- Forecast horizon: **2017-08-16 → 2017-08-31**
+- Submission strategies:
+  - Single final model
+  - Ensemble of CV fold models + final model
 
 The ensemble achieved the best Public Leaderboard score.
 
@@ -235,38 +235,32 @@ The ensemble achieved the best Public Leaderboard score.
 
 ## Key Takeaways
 
-* In time-series tasks, **validation design strongly influences performance**
-* Strong feature engineering can outperform more complex models
-* High-cost features (e.g., CNNs) should be adopted only with quantitative justification
-* Model complexity should be balanced against reproducibility and interpretability
+- Validation design is critical in time-series problems
+- SHAP-guided feature selection improves both accuracy and stability
+- High-cost features (e.g., CNN embeddings) should be adopted only with clear validation gains
+- Emphasizing reproducibility and interpretability leads to robust solutions
 
 ---
 
 ## Repository Structure
 
-* `store_sales_new.ipynb / .py`
-  End-to-end pipeline from preprocessing to training and prediction
-* `models/`
-  LightGBM models trained for each fold
-* `submission.csv`
-  Submission using the single final model
-* `submission_ensemble.csv`
-  Ensemble submission file
+- `store_sales_new.ipynb` / `.py`: End-to-end pipeline (preprocessing → training → inference)
+- `models/`: LightGBM models trained for each CV fold
+- `submission.csv`: Single-model submission
+- `submission_ensemble.csv`: Ensemble submission
 
 ---
 
 ## Notes
 
-Rather than blindly adopting complex models for performance gains, this project emphasizes **decision-making based on validation results**.
-
-The entire workflow, including these decisions, is published in a **reproducible form**.
+This repository intentionally documents not only the final model,
+but also the **decision-making process** behind feature and model selection,
+ensuring full reproducibility and transparency.
 
 ---
 
 ## License
 
-This project is released under the **MIT License**.
+This project is released under the **MIT License**.  
 See the `LICENSE` file for details.
-
-
 
