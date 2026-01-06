@@ -1,237 +1,272 @@
+📘 Japanese version → README_ja.md
+
 # Store Sales Time Series Forecasting
 
-## プロジェクト概要（サマリー）
+## Project Summary
 
-* **課題**：店舗 × 商品カテゴリごとの日次販売数を16日先まで予測
-* **手法**：LightGBM を中心とした時系列回帰モデル
-* **工夫点**：時系列交差検証の設計、リーク防止の特徴量設計、CNN embedding の検証
-* **最終スコア（Public LB）**：
+**Task**
+Forecast daily sales for each *store × product family* for the next **16 days**.
 
-  * 単一モデル：0.42405
-  * **アンサンブル：0.41542**
-* **順位**：**96 / 793（上位 約12%）**
+**Approach**
+Time-series regression models primarily based on **gradient boosting (LightGBM)**.
 
-本プロジェクトでは、精度向上だけでなく、**再現性・妥当性・意思決定プロセス**を重視したモデリングを行った。
+**Key Contributions**
 
----
+* Carefully designed **time-series cross-validation**
+* Leakage-aware **feature engineering**
+* Experimental evaluation of **CNN-based time-series embeddings**
 
-## 概要
+**Final Results (Public Leaderboard)**
 
-本リポジトリは、Kaggle コンペティション **Store Sales - Time Series Forecasting** に対する解法をまとめたものである。
-目的は、過去の販売実績および補助的な外部データを用いて、
-各 *店舗 × 商品カテゴリ* ごとの日次販売数を予測することである。
+* Single model: **0.42405**
+* Ensemble model: **0.41542**
+* Rank: **96 / 793** (Top ~12%)
 
-本プロジェクトでは、
-
-* **時系列に配慮した交差検証**
-* **リークを防ぐ特徴量設計**
-* **定量的な検証に基づくモデル選択**
-
-を重視し、Leaderboard 上のテクニックに依存しない実装を行った。
+This project emphasizes not only predictive performance, but also **reproducibility, validity, and decision-making processes** in modeling.
 
 ---
 
-## 結果
+## Overview
 
-* **最終単一モデル（Public LB）**：0.42405
-* **アンサンブルモデル（Public LB）**：**0.41542**
-* **順位**：**96 / 793 人（上位 約12%）**
+This repository contains a solution for the Kaggle competition
+**Store Sales – Time Series Forecasting**.
 
-アンサンブルモデルは単一モデルを一貫して上回り、
-交差検証と Public Leaderboard の相関が取れていることを確認できた。
+The objective is to predict daily sales for each *store × product family* using historical sales records and auxiliary external data.
 
----
+Rather than relying on leaderboard-specific tricks, this project focuses on:
 
-## データ
-
-Kaggle により提供された以下のデータセットを使用した。
-
-* `train.csv` / `test.csv`：店舗 × 商品カテゴリごとの日次販売数
-* `stores.csv`：店舗情報（都市、州、店舗タイプ、クラスタ）
-* `oil.csv`：日次原油価格（欠損日は補完）
-* `holidays_events.csv`：祝日情報（国・地域・ローカル）
-
-特徴量生成の一貫性を保つため、train と test は結合した上で前処理を行い、
-**販売数に依存する特徴量は必ず過去データのみを用いて算出**した。
+* Time-series–aware cross-validation
+* Leakage-safe feature engineering
+* Quantitative and reproducible model selection
 
 ---
 
-## 検証戦略
+## Results
 
-本プロジェクトにおいて、**精度が大きく向上した最も重要な要因は、交差検証（CV）設計の見直し**である。
+* Final single model (Public LB): **0.42405**
+* Ensemble model (Public LB): **0.41542**
+* Rank: **96 / 793** (Top ~12%)
 
-### 初期の設計（改善前）
-
-当初は以下のような方法で特徴量を作成していた。
-
-* 移動平均や平均系特徴量（store / family など）を
-* **全 fold の中で最も早い `train_end` より前の期間のみ**を用いて算出
-* その特徴量を、すべての fold の validation 期間に共通で使用
-
-この方法はリークを防ぐ点では安全である一方で、
-
-* 各 fold の学習期間で利用可能なデータを
-* **十分に活用できていない**
-
-という問題があった。
+The ensemble model consistently outperformed the single model.
+Moreover, the cross-validation scores showed good alignment with Public Leaderboard performance, indicating a reliable validation strategy.
 
 ---
 
-### 改善後の設計（最終採用）
+## Dataset
 
-精度改善のため、交差検証の設計を以下のように変更した。
+The following datasets provided by Kaggle were used:
 
-* データ分割（fold ループ）の **内側** で特徴量を生成
-* 各 fold ごとに
+* `train.csv` / `test.csv`
+  Daily sales for each *store × product family*
+* `stores.csv`
+  Store metadata (city, state, store type, cluster)
+* `oil.csv`
+  Daily oil prices (missing dates were imputed)
+* `holidays_events.csv`
+  Holiday information (national, regional, local)
 
-  * `train_end` までの **全データ** を用いて
-  * 平均系・移動平均系特徴量を再計算
-* validation 期間には、その fold 専用に作成した特徴量を使用
+To ensure consistency in feature generation:
 
-これにより、
-
-* 各 fold において利用可能な過去データを最大限活用
-* リークを防ぎつつ、より情報量の多い特徴量を生成
-
-することが可能となった。
-
----
-
-### 効果
-
-この変更により、
-
-* 交差検証スコアが大幅に改善
-* CV と Public Leaderboard の整合性も向上
-
-し、最終的なモデル性能の底上げにつながった。
-
-この経験から、
-**時系列タスクにおいては「どのようにデータを分割し、どの時点までの情報を使うか」が
-モデル選択以上に重要である**ことを強く認識した。
-
----|---|---|
-| 1 | 2013-01-01 → 2017-06-30 | 2017-07-01 → 2017-07-16 |
-| 2 | 2013-01-01 → 2017-07-15 | 2017-07-17 → 2017-08-01 |
-| 3 | 2013-01-01 → 2017-07-30 | 2017-07-31 → 2017-08-15 |
-
-すべての fold において、販売実績を用いる特徴量は
-`train_end` 以前のデータのみを使用することでリークを防止した。
+* `train` and `test` were concatenated during preprocessing
+* Any sales-dependent features were computed **using past data only**
 
 ---
 
-## 特徴量設計
+## Validation Strategy
 
-### Fold 非依存の特徴量
+The most significant performance improvement in this project came from redesigning the **cross-validation (CV) strategy**.
 
-* **日付特徴量**：年、月、日、曜日、週末フラグ
-* **原油価格特徴量**：移動平均（30 / 90 / 180 日）
-* **祝日特徴量**：
+### Initial Design (Before Improvement)
 
-  * 国・地域・ローカル祝日フラグ
-  * 統合祝日フラグ
-  * 特別営業日（Workday）フラグ
+Initially, rolling and aggregated features (e.g., by store or product family) were computed as follows:
 
-### Fold 依存（リーク防止）の特徴量
+* Use only the period before the *earliest train_end* across all folds
+* Apply the same features to the validation period of every fold
 
-* **平均系特徴量（Target Encoding）**
+This approach was safe in terms of leakage prevention, but had a major drawback:
 
-  * store / family / store×family / type / cluster
-* **販売数の移動平均**
-
-  * window：3 / 7 / 30 日
-  * shift を用いて必ず過去値のみを参照
+* It did **not fully utilize all available historical data** within each fold
 
 ---
 
-## モデル
+### Improved Design (Final Approach)
 
-### ベースモデル：LightGBM
+To address this limitation, feature generation was moved **inside the CV loop**.
 
-* 目的関数：回帰（log 空間で RMSLE を評価）
-* 大規模特徴量に強い勾配ブースティングモデルを採用
-* ハイパーパラメータは **Optuna** により最適化
+For each fold:
 
-### ハイパーパラメータチューニング
+* All data up to the fold-specific `train_end` was used
+* Rolling and aggregated features were recomputed per fold
+* Validation periods used features generated exclusively for that fold
 
-* Optuna + Median Pruner
-* 3-fold 時系列交差検証
-* 方針：
+This allowed:
 
-  1. **CNN なしモデルでフルチューニング**
-  2. 得られた best parameter を初期値として利用
-  3. CNN 使用時は軽量な探索のみ実施
+* Maximum use of available historical data per fold
+* Leakage prevention with richer feature representations
 
 ---
 
-## CNN による時系列 Embedding（検証的実装）
+### Effect
 
-rolling statistics では捉えきれない短期的な時系列パターンを表現するため、
-**1D CNN による時系列 embedding** を実装した。
+As a result:
 
-* 入力：過去 30 日間の特徴量
+* Cross-validation scores improved significantly
+* Alignment between CV and Public LB scores improved
+* Overall model performance became more stable and reliable
 
-  * promotion フラグ
-  * 祝日フラグ
-  * 曜日 / 日付
-  * 原油価格
-* 出力：固定次元の embedding ベクトル
-* CNN は **学習せず、特徴抽出器として使用**
-
-計算コスト削減のため、embedding は **fold 単位でキャッシュ**し、
-Optuna 実行中に再計算が発生しない設計とした。
-
-### 検証結果と判断
-
-* CNN embedding は特徴量重要度に現れ、モデル内で利用されていた
-* train スコアは改善したが、validation スコアの改善は一貫しなかった
-
-以上より、本プロジェクトでは
-**再現性・簡潔性・推論コストを優先し、最終モデルでは CNN を不採用**とした。
+This experience reinforced the importance of **data splitting and information availability timing** in time-series tasks—often more critical than model choice itself.
 
 ---
 
-## 最終学習と予測
+## Cross-Validation Splits
 
-* 2017-08-15 までの全データを用いて最終モデルを学習
-* 2017-08-16 ～ 2017-08-31 を予測対象期間とした
-* 提出モデル：
+| Fold | Training Period         | Validation Period       |
+| ---- | ----------------------- | ----------------------- |
+| 1    | 2013-01-01 → 2017-06-30 | 2017-07-01 → 2017-07-16 |
+| 2    | 2013-01-01 → 2017-07-15 | 2017-07-17 → 2017-08-01 |
+| 3    | 2013-01-01 → 2017-07-30 | 2017-07-31 → 2017-08-15 |
 
-  * 単一最終モデル
-  * CV 各 fold モデル＋最終モデルによるアンサンブル
-
-アンサンブルモデルが最良の Public Leaderboard スコアを達成した。
-
----
-
-## まとめ・学び
-
-* 時系列タスクでは **検証設計が性能を大きく左右する**
-* 強力な特徴量設計により、複雑なモデルに頼らず高い性能を達成できる
-* 高コスト特徴量（CNN）は **定量評価に基づいて採否を判断すべき**
-* モデルの複雑化よりも、再現性と説明可能性を重視した
+For all folds, any feature depending on sales values used **only data prior to `train_end`** to avoid leakage.
 
 ---
 
-## リポジトリ構成
+## Feature Engineering
 
-* `store_sales_new.ipynb` / `.py`：前処理から学習・予測までの一連のコード
-* `models/`：fold ごとに学習した LightGBM モデル
-* `submission.csv`：単一モデルによる提出ファイル
-* `submission_ensemble.csv`：アンサンブル提出ファイル
+### Fold-Independent Features
+
+* **Date features**: year, month, day, weekday, weekend flag
+* **Oil price features**: rolling means (30 / 90 / 180 days)
+* **Holiday features**:
+
+  * National / regional / local holiday flags
+  * Unified holiday flag
+  * Special workday flag
 
 ---
 
-## 補足
+### Fold-Dependent (Leakage-Safe) Features
 
-本プロジェクトでは、
-**精度向上のために複雑なモデルを盲目的に採用するのではなく、
-検証結果に基づいて最終判断を行うプロセス**を重視した。
+**Aggregated features (target encoding style)**:
 
-このような意思決定プロセスも含めて、本リポジトリは再現可能な形で公開している。
+* `store`
+* `family`
+* `store × family`
+* `store type`
+* `cluster`
+
+**Rolling statistics**:
+
+* Windows: 3 / 7 / 30 days
+* Shifted to ensure only past values are referenced
+
+---
+
+## Model
+
+* **Base model**: LightGBM
+* **Objective**: Regression (evaluated using RMSLE in log space)
+* Selected for robustness to large-scale, high-dimensional features
+* Hyperparameters optimized using Optuna
+
+---
+
+## Hyperparameter Tuning
+
+* **Framework**: Optuna with Median Pruner
+* **Validation**: 3-fold time-series CV
+
+### Strategy
+
+* Full tuning without CNN features
+* Best parameters reused as initialization
+* Lightweight tuning when CNN embeddings were enabled
+
+---
+
+## CNN-Based Time-Series Embedding (Experimental)
+
+To capture short-term temporal patterns not fully represented by rolling statistics, a **1D CNN-based time-series embedding** was implemented.
+
+**Input (past 30 days)**:
+
+* Promotion flags
+* Holiday flags
+* Day-of-week / date features
+* Oil price
+
+**Output**:
+
+* Fixed-dimensional embedding vector
+
+The CNN was used **only as a feature extractor** and not trained jointly with the model.
+
+To reduce computational cost:
+
+* Embeddings were cached per fold
+* No recomputation occurred during Optuna optimization
+
+---
+
+## Evaluation and Decision
+
+* CNN embeddings appeared in feature importance and were utilized by the model
+* Training scores improved, but validation scores did not improve consistently
+
+Based on quantitative evaluation:
+
+* CNN features were excluded from the final model
+* Priority was given to **reproducibility, simplicity, and inference cost**
+
+---
+
+## Final Training and Prediction
+
+* Final model trained using all data up to **2017-08-15**
+* Forecast period: **2017-08-16 → 2017-08-31**
+
+**Submitted models**:
+
+* Single final model
+* Ensemble of CV fold models + final model
+
+The ensemble achieved the best Public Leaderboard score.
+
+---
+
+## Key Takeaways
+
+* In time-series tasks, **validation design strongly influences performance**
+* Strong feature engineering can outperform more complex models
+* High-cost features (e.g., CNNs) should be adopted only with quantitative justification
+* Model complexity should be balanced against reproducibility and interpretability
+
+---
+
+## Repository Structure
+
+* `store_sales_new.ipynb / .py`
+  End-to-end pipeline from preprocessing to training and prediction
+* `models/`
+  LightGBM models trained for each fold
+* `submission.csv`
+  Submission using the single final model
+* `submission_ensemble.csv`
+  Ensemble submission file
+
+---
+
+## Notes
+
+Rather than blindly adopting complex models for performance gains, this project emphasizes **decision-making based on validation results**.
+
+The entire workflow, including these decisions, is published in a **reproducible form**.
+
+---
+
+## License
+
+This project is released under the **MIT License**.
+See the `LICENSE` file for details.
 
 
-## ライセンス
 
-このプロジェクトは **MIT ライセンス** の下で公開されています。
-詳細は [LICENSE](./LICENSE) ファイルをご覧ください。
